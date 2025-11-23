@@ -1,0 +1,175 @@
+🔹 1. Core Concept
+
+Build a smart digital governance platform that provides:
+
+Citizen application submission
+
+AI-based workflow monitoring
+
+Delay detection
+
+Real-time notifications
+
+OTP-based feedback system
+
+Application tracking with unique ID
+
+Auto-approval after 30 days
+
+Public rating system
+
+Document hash storage on blockchain (simulation allowed)
+
+Official dashboard
+
+🔹 2. Functional Requirements
+
+Include the following modules:
+
+Citizen Side
+
+Login / Register
+
+Submit an application
+
+Track application with unique ID
+
+Receive alerts on approval/delay
+
+Submit feedback + OTP verification
+
+View status history
+
+Official Side
+
+Assign/Accept applications
+
+Update status
+
+View citizen feedback
+
+Performance dashboard
+
+Admin Panel
+
+View all applications
+
+Monitor delays
+
+Configure auto-approval settings
+
+Manage officials
+
+🔹 3. AI Integration
+
+Simulate AI features with Spring Boot services:
+
+AI workflow engine that monitors every application
+
+Detect inactivity or delays
+
+Trigger alerts to officials + users
+
+Recommend bottleneck points
+
+Auto-approve after 30 days
+
+Analyze feedback to generate performance score
+
+(AI can be rule-based, ML is optional.)
+
+🔹 4. Technical Architecture
+
+Backend (Spring Boot):
+
+RESTful APIs
+
+Controllers: User, Application, Feedback, OTP, Admin
+
+Services: AI Engine, Notification, Blockchain, Delay Detector
+
+Entities: User, Application, Feedback, Official, OTPRecord, HashRecord
+
+Security using Spring Security + JWT
+
+MySQL for database
+
+Redis (Optional) for caching + queueing AI tasks
+
+Frontend:
+
+HTML5
+
+CSS3
+
+JavaScript (Vanilla)
+
+Responsive UI (Govt theme)
+
+Blockchain (Simulation allowed):
+
+Store hash of approved application documents
+
+Use a private blockchain simulation or local hash chain
+
+🔹 5. System Flow (Required Output)
+
+Ask the AI to generate:
+
+User submits application
+
+Application stored in MySQL
+
+Assigned to official
+
+AI monitors delays
+
+Alerts triggered
+
+Official updates progress
+
+Citizen gives rating
+
+OTP verification
+
+Hash stored on blockchain (simulated)
+
+Dashboard shows insights
+
+🔹 6. Deliverables Needed
+
+Ask AI to generate:
+
+Full project folder structure
+
+Spring Boot backend code (working condition)
+
+MySQL database ER diagram
+
+APIs documentation
+
+Frontend pages (HTML/CSS/JS)
+
+AI engine logic
+
+Blockchain simulation code
+
+Deployment instructions
+
+GitHub-ready README.md (aesthetic + animated badges)
+
+🔹 7. Tone & Output Style
+
+Generate:
+
+Clean, production-level backend
+
+Well-commented code
+
+Attractive UI
+
+Professional architecture diagram
+
+100% working sample code
+
+Perfect for SIH-level project submission

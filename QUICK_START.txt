@@ -1,0 +1,273 @@
+================================================================================
+                    SMART INDIA PROJECT - QUICK START GUIDE
+================================================================================
+
+PROJECT OVERVIEW
+================================================================================
+A smart digital governance platform that provides transparent application 
+processing with AI-powered monitoring, blockchain verification, and guaranteed 
+30-day auto-approval.
+
+ROLES & ACCESS
+================================================================================
+1. CITIZEN - Submit & track applications
+   URL: /citizen/dashboard
+   Can: Submit apps, track progress, give feedback, view blockchain hash
+
+2. OFFICIAL - Process applications
+   URL: /official/dashboard  
+   Can: Accept assignments, update status, view delay alerts, track metrics
+
+3. ADMIN - Monitor system
+   URL: /admin/dashboard
+   Can: View all applications, official performance, system analytics
+
+QUICK START
+================================================================================
+1. Install dependencies:
+   npm install
+
+2. Start development server:
+   npm run dev
+   → Server runs on http://localhost:5000
+
+3. Open browser:
+   http://localhost:5000
+
+AUTHENTICATION
+================================================================================
+JWT-based authentication with role-based access control.
+
+Register a New User:
+  POST /api/auth/register
+  Body: {
+    username: "user@example.com",
+    password: "password123",
+    role: "citizen|official|admin",
+    fullName: "John Doe",
+    email: "john@example.com",
+    phone: "1234567890"
+  }
+
+Login:
+  POST /api/auth/login
+  Body: {
+    username: "user@example.com",
+    password: "password123"
+  }
+  Returns: { token: "jwt_token_here" }
+
+Use token in requests:
+  Header: Authorization: Bearer <token>
+
+API ENDPOINTS
+================================================================================
+
+APPLICATIONS
+  GET    /api/applications           - Get all applications (paginated)
+  POST   /api/applications           - Submit new application
+  GET    /api/applications/:id       - Get specific application
+  PUT    /api/applications/:id       - Update application status
+  GET    /api/applications/track/:id - Track by tracking ID
+
+USERS
+  GET    /api/users/officials        - Get list of available officials (citizen only)
+  GET    /api/users/profile          - Get current user profile
+
+NOTIFICATIONS
+  GET    /api/notifications          - Get user notifications
+  PUT    /api/notifications/:id      - Mark notification as read
+
+FEEDBACK
+  POST   /api/feedback               - Submit application feedback/rating
+  GET    /api/feedback/:applicationId - Get feedback for application
+
+OTP VERIFICATION
+  POST   /api/otp/generate           - Generate OTP for feedback
+  POST   /api/otp/verify             - Verify OTP code
+
+APPLICATION WORKFLOW
+================================================================================
+1. Citizen submits application → Tracking ID generated
+2. Official accepts application → Status: Assigned
+3. Official updates status → Status: In Progress
+4. Official approves/rejects → Blockchain hash generated (if approved)
+5. Citizen provides OTP-verified rating
+6. If no action for 30 days → Auto-approved with notification
+
+APPLICATION STATUSES
+================================================================================
+- Submitted      : Initial state when citizen submits
+- Assigned       : Official has accepted the application
+- In Progress    : Official is working on it
+- Approved       : Application approved, blockchain hash generated
+- Rejected       : Application rejected by official
+- Auto-Approved  : Auto-approved after 30 days of inactivity
+
+AI MONITORING FEATURES
+================================================================================
+✓ Delay Detection    : Alerts when application pending >7 days
+✓ Auto-Approval      : Auto-approve after 30 days of no updates
+✓ Real-time Alerts   : Notifications to citizens & officials
+✓ Blockchain Hashing : SHA-256 hash for approved applications
+
+PROJECT STRUCTURE
+================================================================================
+client/src/
+  ├── pages/          - All pages (Landing, Login, Dashboards)
+  ├── components/     - Reusable UI components
+  ├── contexts/       - Auth context for global state
+  ├── hooks/          - Custom React hooks
+  └── lib/            - Utility functions & query client
+
+server/
+  ├── routes.ts       - All API endpoints & middleware
+  ├── storage.ts      - In-memory data storage (CRUD)
+  ├── app.ts          - Express app configuration
+  ├── index-dev.ts    - Development server entry
+  └── index-prod.ts   - Production server entry
+
+shared/
+  └── schema.ts       - Data models & Zod validation schemas
+
+TECHNOLOGY STACK
+================================================================================
+Frontend:
+  - React 18 + TypeScript
+  - Wouter (routing)
+  - TanStack Query (data fetching)
+  - Shadcn UI + Tailwind CSS
+  - Framer Motion (animations)
+
+Backend:
+  - Express.js + TypeScript
+  - JWT authentication
+  - In-memory storage
+  - Drizzle ORM (schema)
+
+ENVIRONMENT VARIABLES
+================================================================================
+SESSION_SECRET : JWT signing secret (set in Replit secrets)
+NODE_ENV       : development | production (auto-set by npm scripts)
+PORT           : 5000 (default)
+
+COMMON COMMANDS
+================================================================================
+npm run dev      - Start development server
+npm run build    - Build for production
+npm start        - Run production build
+npm run check    - TypeScript type checking
+npm audit        - Check security vulnerabilities
+npm audit fix    - Fix vulnerabilities
+
+TESTING GUIDE
+================================================================================
+1. Register as CITIZEN
+   → Submit application → Receive tracking ID
+   → Track application progress
+   → View application details
+   → Submit OTP-verified feedback
+
+2. Register as OFFICIAL  
+   → View unassigned applications
+   → Accept application
+   → Update status with comments
+   → Monitor delay alerts
+
+3. Register as ADMIN
+   → View system-wide analytics
+   → Monitor all applications
+   → Track official performance
+   → View delay reports
+
+BLOCKCHAIN VERIFICATION
+================================================================================
+When application is APPROVED:
+  → SHA-256 hash generated from: applicationId + timestamp
+  → Hash stored in database
+  → Citizen can view & copy hash
+  → Serves as immutable approval certificate
+
+NOTIFICATION TYPES
+================================================================================
+- submission    : When citizen submits application
+- assignment    : When official accepts application
+- delay         : When application pending >7 days
+- approval      : When application is approved/rejected
+- auto-approval : When system auto-approves after 30 days
+- feedback      : When citizen submits feedback
+
+KEY FEATURES CHECKLIST
+================================================================================
+✓ User Registration & Authentication
+✓ Role-based Access Control (3 roles)
+✓ Application Submission & Tracking
+✓ Status Timeline/Progress Indicator
+✓ Real-time Notifications
+✓ OTP-verified Feedback System
+✓ 5-Star Rating Component
+✓ Blockchain SHA-256 Hash Generation
+✓ Auto-approval after 30 days
+✓ Delay Detection & Alerts
+✓ Admin Analytics Dashboard
+✓ Official Performance Metrics
+✓ Dark/Light Mode Theme Toggle
+✓ Responsive Mobile Design
+✓ Government-themed Color Scheme
+
+TROUBLESHOOTING
+================================================================================
+Issue: PORT 5000 already in use
+  → Kill process: lsof -ti:5000 | xargs kill -9
+  → Or use different port in code
+
+Issue: Database connection error
+  → Check environment variables
+  → Verify DATABASE_URL if using external DB
+
+Issue: JWT authentication fails
+  → Check SESSION_SECRET is set
+  → Verify token in Authorization header
+  → Re-login if token expired
+
+Issue: Vulnerabilities in npm audit
+  → Run: npm audit fix --force
+  → Update package.json if needed
+  → Reinstall: npm install
+
+FILES TO MODIFY FOR CUSTOMIZATION
+================================================================================
+Routes/API         → server/routes.ts
+Data Schema        → shared/schema.ts
+UI Components      → client/src/components/
+Pages              → client/src/pages/
+Styling            → tailwind.config.ts
+Backend Logic      → server/storage.ts
+
+DEPLOYMENT
+================================================================================
+Build for production:
+  npm run build
+
+This creates:
+  - dist/index.js        (backend bundle)
+  - client/dist/         (frontend build)
+
+Start production:
+  npm start
+
+NOTES
+================================================================================
+- All data stored in-memory (resets on server restart)
+- For production, migrate to persistent database (PostgreSQL recommended)
+- Use Drizzle Kit for migrations: npm run db:push
+- Update SESSION_SECRET with strong secret in production
+- Enable HTTPS in production
+- Consider rate limiting for API endpoints
+
+SUPPORT & DOCUMENTATION
+================================================================================
+See replit.md for detailed project documentation
+Check individual component files for implementation details
+Review routes.ts for complete API endpoint list
+================================================================================
