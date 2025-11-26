@@ -23,6 +23,7 @@ export default function Login() {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
+    role: "citizen",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,10 +31,12 @@ export default function Login() {
     setIsLoading(true);
 
     try {
+      // Role is for UI/local purposes only; login API takes username/password
+      const { username, password } = formData;
       const response = await apiRequest<{ user: User; phone: string }>(
         "POST",
         "/api/auth/login",
-        formData
+        { username, password }
       );
 
       setTempUser(response);
@@ -79,7 +82,7 @@ export default function Login() {
       // close OTP modal and clear temp state
       setShowOTP(false);
       setTempUser(null);
-      setFormData({ username: "", password: "" });
+      setFormData({ username: "", password: "", role: "citizen" });
 
       // navigate based on role
       const role = tokenResp.user?.role;
@@ -157,6 +160,20 @@ export default function Login() {
                   className="border-green-200/30 bg-white/10 dark:bg-slate-900/30 focus:border-green-500 focus:ring-green-500/20 dark:border-green-800/30 dark:focus:bg-slate-900/40 backdrop-blur-sm"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="role" className="text-sm font-semibold">Login As</Label>
+                <select
+                  aria-label="Select login role"
+                  id="role"
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="w-full border-green-200/30 bg-white/10 dark:bg-slate-900/30 focus:border-green-500 focus:ring-green-500/20 dark:border-green-800/30 dark:focus:bg-slate-900/40 rounded-md p-2"
+                >
+                  <option value="citizen">Citizen</option>
+                  <option value="official">Official</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-semibold py-2 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
@@ -191,7 +208,7 @@ export default function Login() {
           onClose={() => {
             setShowOTP(false);
             setTempUser(null);
-            setFormData({ username: "", password: "" });
+            setFormData({ username: "", password: "", role: "citizen" });
           }}
           onVerify={handleOTPVerify}
           phone={tempUser.phone}

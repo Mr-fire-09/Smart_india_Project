@@ -38,6 +38,7 @@ export default function Register() {
     email: "",
     phone: "",
     aadharNumber: "",
+    role: "citizen",
   });
 
   // OTP removed: verification is not required for registration flow
@@ -61,7 +62,7 @@ export default function Register() {
       const response = await apiRequest<{ user: User; token?: string; phone?: string; otp?: string }>(
         "POST",
         "/api/auth/register",
-        { ...registerData, role: "citizen" }
+        registerData
       );
 
       // If server returned a phone (two-step flow), show OTP modal
@@ -125,7 +126,7 @@ export default function Register() {
 
       setShowOTP(false);
       setTempUser(null);
-      setFormData({ username: "", password: "", confirmPassword: "", fullName: "", email: "", phone: "", aadharNumber: "" });
+      setFormData({ username: "", password: "", confirmPassword: "", fullName: "", email: "", phone: "", aadharNumber: "", role: "citizen" });
 
       const role = tokenResp.user?.role;
       if (role === "admin") {
@@ -212,6 +213,21 @@ export default function Register() {
                   data-testid="input-phone"
                   className="border-purple-200/30 bg-white/10 dark:bg-slate-900/30 focus:border-purple-500 focus:ring-purple-500/20 dark:border-purple-800/30 dark:focus:bg-slate-900/40 backdrop-blur-sm"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role" className="text-sm font-semibold">Register As</Label>
+                <select
+                  id="role"
+                  aria-label="Select registration role"
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  data-testid="select-role"
+                  className="w-full border-purple-200/30 bg-white/10 dark:bg-slate-900/30 focus:border-purple-500 focus:ring-purple-500/20 dark:border-purple-800/30 dark:focus:bg-slate-900/40 rounded-md p-2"
+                >
+                  <option value="citizen">Citizen</option>
+                  <option value="official">Official</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="aadharNumber" className="text-sm font-semibold">Aadhar Number</Label>
