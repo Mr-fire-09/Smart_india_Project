@@ -12,6 +12,7 @@ export const users = pgTable("users", {
   email: text("email").notNull(),
   phone: text("phone"),
   aadharNumber: text("aadhar_number"),
+  department: text("department"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -52,8 +53,13 @@ export const feedback = pgTable("feedback", {
 
 export const otpRecords = pgTable("otp_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+<<<<<<< HEAD
+  phone: text("phone"),
+  email: text("email"),
+=======
   // recipient can be a phone number or an email address
   recipient: text("recipient").notNull(),
+>>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
   otp: text("otp").notNull(),
   purpose: text("purpose").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
@@ -86,8 +92,11 @@ export const insertUserSchema = createInsertSchema(users).omit({
 });
 
 export const loginSchema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(1),
+  username: z.string().optional(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  password: z.string().optional(),
+  loginType: z.enum(["password", "otp"]).default("password"),
 });
 
 export const insertApplicationSchema = createInsertSchema(applications).omit({
@@ -114,13 +123,23 @@ export const insertFeedbackSchema = createInsertSchema(feedback).omit({
 });
 
 export const verifyOtpSchema = z.object({
+<<<<<<< HEAD
+  phone: z.string().optional(),
+  email: z.string().email().optional(),
+=======
   recipient: z.string(),
+>>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
   otp: z.string().length(6),
   purpose: z.string(),
 });
 
 export const generateOtpSchema = z.object({
+<<<<<<< HEAD
+  phone: z.string().optional(),
+  email: z.string().email().optional(),
+=======
   recipient: z.string(),
+>>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
   purpose: z.string(),
   // When true, attempt to deliver the OTP to the configured MAIN_OTP_TARGET instead
   // of (or in addition to) the user-provided phone.

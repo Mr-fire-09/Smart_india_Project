@@ -62,8 +62,13 @@ export default function ApplicationDetails() {
 
   const verifyOTPMutation = useMutation({
     mutationFn: async (otp: string) => {
+<<<<<<< HEAD
+      return await apiRequest("POST", "/api/auth/verify-otp", {
+        phone: "temp-phone",
+=======
       return await apiRequest("POST", "/api/otp/verify", {
         recipient: user?.email || user?.phone,
+>>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
         otp,
         purpose: "feedback",
       });
@@ -204,7 +209,10 @@ export default function ApplicationDetails() {
             <CardDescription>Track the status of your application</CardDescription>
           </CardHeader>
           <CardContent>
-            <StatusStepper currentStatus={application.status} history={history} />
+            <StatusStepper
+              currentStatus={application.status}
+              history={history.map(h => ({ ...h, updatedAt: new Date(h.updatedAt).toISOString() }))}
+            />
           </CardContent>
         </Card>
 
