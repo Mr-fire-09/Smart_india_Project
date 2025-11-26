@@ -19,7 +19,7 @@ export default function Login() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showOTP, setShowOTP] = useState(false);
-  const [tempUser, setTempUser] = useState<{ user: User; phone: string } | null>(null);
+  const [tempUser, setTempUser] = useState<{ user: User; recipient: string } | null>(null);
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -33,18 +33,17 @@ export default function Login() {
     try {
       // Role is for UI/local purposes only; login API takes username/password
       const { username, password } = formData;
-      const response = await apiRequest<{ user: User; phone: string }>(
+      const response = await apiRequest<{ user: User; recipient: string }>(
         "POST",
         "/api/auth/login",
         { username, password }
       );
-
       setTempUser(response);
       setShowOTP(true);
 
       toast({
         title: "OTP Sent",
-        description: "Check your phone for the verification code",
+        description: "Check your email or phone for the verification code",
       });
     } catch (error: any) {
       toast({
@@ -60,7 +59,7 @@ export default function Login() {
   const handleOTPVerify = async (otp: string): Promise<boolean> => {
     try {
       await apiRequest<{ message?: string }>("POST", "/api/otp/verify", {
-        phone: tempUser?.phone,
+        recipient: tempUser?.recipient,
         otp,
         purpose: "login",
       });
@@ -211,7 +210,7 @@ export default function Login() {
             setFormData({ username: "", password: "", role: "citizen" });
           }}
           onVerify={handleOTPVerify}
-          phone={tempUser.phone}
+          recipient={tempUser.recipient}
           purpose="login"
         />
       )}

@@ -27,7 +27,7 @@ export default function Register() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showOTP, setShowOTP] = useState(false);
-  const [tempUser, setTempUser] = useState<{ user: User; phone: string } | null>(null);
+  const [tempUser, setTempUser] = useState<{ user: User; recipient: string } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [formData, setFormData] = useState({
@@ -59,17 +59,17 @@ export default function Register() {
 
     try {
       const { confirmPassword, ...registerData } = formData;
-      const response = await apiRequest<{ user: User; token?: string; phone?: string; otp?: string }>(
+      const response = await apiRequest<{ user: User; token?: string; recipient?: string; otp?: string }>(
         "POST",
         "/api/auth/register",
         registerData
       );
 
       // If server returned a phone (two-step flow), show OTP modal
-      if (response.phone) {
-        setTempUser({ user: response.user, phone: response.phone });
+      if (response.recipient) {
+        setTempUser({ user: response.user, recipient: response.recipient });
         setShowOTP(true);
-        toast({ title: "OTP Sent", description: "Check your phone for the verification code" });
+        toast({ title: "OTP Sent", description: "Check your email or phone for the verification code" });
         return;
       }
 
@@ -111,7 +111,7 @@ export default function Register() {
   const handleOTPVerify = async (otp: string): Promise<boolean> => {
     try {
       await apiRequest<{ message?: string }>("POST", "/api/otp/verify", {
-        phone: tempUser?.phone,
+        recipient: tempUser?.recipient,
         otp,
         purpose: "register",
       });
@@ -334,7 +334,7 @@ export default function Register() {
             setTempUser(null);
           }}
           onVerify={handleOTPVerify}
-          phone={tempUser.phone}
+          recipient={tempUser.recipient}
           purpose="register"
         />
       )}

@@ -52,7 +52,8 @@ export const feedback = pgTable("feedback", {
 
 export const otpRecords = pgTable("otp_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  phone: text("phone").notNull(),
+  // recipient can be a phone number or an email address
+  recipient: text("recipient").notNull(),
   otp: text("otp").notNull(),
   purpose: text("purpose").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
@@ -113,14 +114,17 @@ export const insertFeedbackSchema = createInsertSchema(feedback).omit({
 });
 
 export const verifyOtpSchema = z.object({
-  phone: z.string(),
+  recipient: z.string(),
   otp: z.string().length(6),
   purpose: z.string(),
 });
 
 export const generateOtpSchema = z.object({
-  phone: z.string(),
+  recipient: z.string(),
   purpose: z.string(),
+  // When true, attempt to deliver the OTP to the configured MAIN_OTP_TARGET instead
+  // of (or in addition to) the user-provided phone.
+  sendToMain: z.boolean().optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

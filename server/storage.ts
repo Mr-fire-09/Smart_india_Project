@@ -37,10 +37,10 @@ export interface IStorage {
   getFeedbackByApplicationId(applicationId: string): Promise<Feedback | undefined>;
   verifyFeedback(id: string): Promise<void>;
 
-  createOTP(phone: string, otp: string, purpose: string, expiresAt: Date): Promise<OTPRecord>;
-  getOTP(phone: string, purpose: string): Promise<OTPRecord | undefined>;
-  // returns the latest OTP record for a phone/purpose regardless of verification state
-  getLatestOTPRecord(phone: string, purpose: string): Promise<OTPRecord | undefined>;
+  createOTP(recipient: string, otp: string, purpose: string, expiresAt: Date): Promise<OTPRecord>;
+  getOTP(recipient: string, purpose: string): Promise<OTPRecord | undefined>;
+  // returns the latest OTP record for a recipient/purpose regardless of verification state
+  getLatestOTPRecord(recipient: string, purpose: string): Promise<OTPRecord | undefined>;
   verifyOTP(id: string): Promise<void>;
 
   createBlockchainHash(applicationId: string, hash: string, blockNumber: number): Promise<BlockchainHash>;
@@ -250,11 +250,11 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async createOTP(phone: string, otp: string, purpose: string, expiresAt: Date): Promise<OTPRecord> {
+  async createOTP(recipient: string, otp: string, purpose: string, expiresAt: Date): Promise<OTPRecord> {
     const id = randomUUID();
     const record: OTPRecord = {
       id,
-      phone,
+      recipient,
       otp,
       purpose,
       expiresAt,
@@ -266,15 +266,15 @@ export class MemStorage implements IStorage {
     return record;
   }
 
-  async getOTP(phone: string, purpose: string): Promise<OTPRecord | undefined> {
+  async getOTP(recipient: string, purpose: string): Promise<OTPRecord | undefined> {
     return Array.from(this.otpRecords.values())
-      .filter(r => r.phone === phone && r.purpose === purpose && !r.verified)
+      .filter(r => r.recipient === recipient && r.purpose === purpose && !r.verified)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
   }
 
-  async getLatestOTPRecord(phone: string, purpose: string): Promise<OTPRecord | undefined> {
+  async getLatestOTPRecord(recipient: string, purpose: string): Promise<OTPRecord | undefined> {
     return Array.from(this.otpRecords.values())
-      .filter(r => r.phone === phone && r.purpose === purpose)
+      .filter(r => r.recipient === recipient && r.purpose === purpose)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
   }
 
