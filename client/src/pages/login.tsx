@@ -56,15 +56,11 @@ export default function Login() {
 
   const handleOTPVerify = async (otp: string): Promise<boolean> => {
     try {
-      const response = await apiRequest<{ message?: string }>(
-        "POST",
-        "/api/otp/verify",
-        {
-          phone: tempUser?.phone,
-          otp,
-          purpose: "login",
-        }
-      );
+      await apiRequest<{ message?: string }>("POST", "/api/otp/verify", {
+        phone: tempUser?.phone,
+        otp,
+        purpose: "login",
+      });
 
       // After successful OTP verification, request a token to complete login
       const tokenResp = await apiRequest<{ user: User; token: string }>(
@@ -73,22 +69,23 @@ export default function Login() {
         { username: formData.username }
       );
 
+      // persist auth and update context
       localStorage.setItem("user", JSON.stringify(tokenResp.user));
       localStorage.setItem("token", tokenResp.token);
       setUser(tokenResp.user);
 
-      localStorage.setItem("user", JSON.stringify(response.user));
-      localStorage.setItem("token", response.token);
-      setUser(response.user);
+      toast({ title: "Welcome back!", description: "Logged in successfully" });
 
-      toast({
-        title: "Welcome back!",
-        description: "Logged in successfully",
-      });
+      // close OTP modal and clear temp state
+      setShowOTP(false);
+      setTempUser(null);
+      setFormData({ username: "", password: "" });
 
-      if (tokenResp.user.role === "admin") {
+      // navigate based on role
+      const role = tokenResp.user?.role;
+      if (role === "admin") {
         setLocation("/admin/dashboard");
-      } else if (tokenResp.user.role === "official") {
+      } else if (role === "official") {
         setLocation("/official/dashboard");
       } else {
         setLocation("/citizen/dashboard");
@@ -96,6 +93,8 @@ export default function Login() {
 
       return true;
     } catch (error: any) {
+      const message = error?.message || String(error) || "OTP verification failed";
+      toast({ title: "Verification Failed", description: message, variant: "destructive" });
       return false;
     }
   };

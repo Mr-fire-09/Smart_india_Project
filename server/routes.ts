@@ -113,6 +113,7 @@ class AIMonitoringService {
 const aiService = new AIMonitoringService();
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  const isDev = (process.env.NODE_ENV || "development") !== "production";
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       const data = insertUserSchema.parse(req.body);
@@ -150,13 +151,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: hashedPassword,
       });
 
+      const { password, ...userWithoutPassword } = user;
+
+      // If phone provided, use two-step verification: generate OTP and return phone
+      // Client should complete OTP verification and then call /api/auth/token with purpose='register'
+      if (user.phone) {
+        const otp = generateOTP();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+        await storage.createOTP(user.phone, otp, "register", expiresAt);
+        console.log(`Generated register OTP for ${user.phone}: ${otp}`);
+
+        return res.json({ user: userWithoutPassword, phone: user.phone, ...(isDev ? { otp } : {}) });
+      }
+
+      // no phone -> issue token immediately
       const token = jwt.sign(
         { id: user.id, username: user.username, role: user.role },
         JWT_SECRET,
         { expiresIn: "7d" }
       );
 
-      const { password, ...userWithoutPassword } = user;
       res.json({ user: userWithoutPassword, token });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -190,7 +204,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Generated login OTP for ${user.phone}: ${otp}`);
 
         // Return user (without password) and phone so client can show OTP modal
-        return res.json({ user: userWithoutPassword, phone: user.phone });
+        // In dev mode, include the OTP in the response to simplify local testing.
+        return res.json({ user: userWithoutPassword, phone: user.phone, ...(isDev ? { otp } : {}) });
       }
 
       // Fallback: no phone -> immediate login (token)
@@ -394,7 +409,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/otp/verify", async (req: Request, res: Response) => {
     try {
       const data = verifyOtpSchema.parse(req.body);
+      // fetch the latest unverified OTP record for this phone/purpose
       const record = await storage.getOTP(data.phone, data.purpose);
+
+      console.log(`OTP verify attempt: phone=${data.phone} purpose=${data.purpose} provided=${data.otp}`);
+      if (record) console.log(`Found OTP record id=${record.id} otp=${record.otp} verified=${record.verified} expiresAt=${record.expiresAt.toISOString()}`);
 
       if (!record) {
         return res.status(400).json({ error: "Invalid or expired OTP" });
@@ -404,11 +423,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "OTP expired" });
       }
 
-      if (record.otp !== data.otp) {
+      if (record.otp !== data.otp.trim()) {
         return res.status(400).json({ error: "Invalid OTP" });
       }
 
       await storage.verifyOTP(record.id);
+      console.log(`OTP record id=${record.id} verified`);
       res.json({ message: "OTP verified successfully" });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -419,7 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // receiving successful OTP verification for the user's phone/purpose.
   app.post("/api/auth/token", async (req: Request, res: Response) => {
     try {
-      const { username } = req.body;
+      const { username, purpose = "login" } = req.body;
       if (!username) return res.status(400).json({ error: "username required" });
 
       const user = await storage.getUserByUsername(username);
@@ -427,7 +447,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!user.phone) return res.status(400).json({ error: "No phone registered for user" });
 
-      const record = await storage.getOTP(user.phone, "login");
+      // check latest record (may have been verified) for requested purpose
+      const record = await storage.getLatestOTPRecord(user.phone, purpose);
       if (!record || !record.verified) {
         return res.status(401).json({ error: "OTP not verified" });
       }

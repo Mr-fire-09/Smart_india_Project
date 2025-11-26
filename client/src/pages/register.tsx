@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { OTPModal } from "@/components/otp-modal";
 import type { User } from "@shared/schema";
 import {
   Dialog,
@@ -25,6 +26,8 @@ export default function Register() {
   const { setUser } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [showOTP, setShowOTP] = useState(false);
+  const [tempUser, setTempUser] = useState<{ user: User; phone: string } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [formData, setFormData] = useState({
@@ -55,27 +58,35 @@ export default function Register() {
 
     try {
       const { confirmPassword, ...registerData } = formData;
-      const response = await apiRequest<{ user: User; token: string }>(
+      const response = await apiRequest<{ user: User; token?: string; phone?: string; otp?: string }>(
         "POST",
         "/api/auth/register",
         { ...registerData, role: "citizen" }
       );
 
-      localStorage.setItem("user", JSON.stringify(response.user));
-      localStorage.setItem("token", response.token);
-      setUser(response.user);
+      // If server returned a phone (two-step flow), show OTP modal
+      if (response.phone) {
+        setTempUser({ user: response.user, phone: response.phone });
+        setShowOTP(true);
+        toast({ title: "OTP Sent", description: "Check your phone for the verification code" });
+        return;
+      }
 
-      toast({
-        title: "Registration Successful!",
-        description: "Your account has been created",
-      });
+      // otherwise immediate login (no phone)
+      if (response.token) {
+        localStorage.setItem("user", JSON.stringify(response.user));
+        localStorage.setItem("token", response.token);
+        setUser(response.user);
 
-      if (response.user.role === "admin") {
-        setLocation("/admin/dashboard");
-      } else if (response.user.role === "official") {
-        setLocation("/official/dashboard");
-      } else {
-        setLocation("/citizen/dashboard");
+        toast({ title: "Registration Successful!", description: "Your account has been created" });
+
+        if (response.user.role === "admin") {
+          setLocation("/admin/dashboard");
+        } else if (response.user.role === "official") {
+          setLocation("/official/dashboard");
+        } else {
+          setLocation("/citizen/dashboard");
+        }
       }
     } catch (error: any) {
       const msg = (error && error.message) ? String(error.message) : "Unable to create account";
@@ -93,6 +104,42 @@ export default function Register() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleOTPVerify = async (otp: string): Promise<boolean> => {
+    try {
+      await apiRequest<{ message?: string }>("POST", "/api/otp/verify", {
+        phone: tempUser?.phone,
+        otp,
+        purpose: "register",
+      });
+
+      const tokenResp = await apiRequest<{ user: User; token: string }>("POST", "/api/auth/token", { username: tempUser?.user.username, purpose: "register" });
+
+      localStorage.setItem("user", JSON.stringify(tokenResp.user));
+      localStorage.setItem("token", tokenResp.token);
+      setUser(tokenResp.user);
+
+      toast({ title: "Registration Complete", description: "Your account is verified and ready" });
+
+      setShowOTP(false);
+      setTempUser(null);
+      setFormData({ username: "", password: "", confirmPassword: "", fullName: "", email: "", phone: "", aadharNumber: "" });
+
+      const role = tokenResp.user?.role;
+      if (role === "admin") {
+        setLocation("/admin/dashboard");
+      } else if (role === "official") {
+        setLocation("/official/dashboard");
+      } else {
+        setLocation("/citizen/dashboard");
+      }
+
+      return true;
+    } catch (err: any) {
+      toast({ title: "Verification Failed", description: err?.message || "Invalid or expired OTP", variant: "destructive" });
+      return false;
     }
   };
 
@@ -261,6 +308,20 @@ export default function Register() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* OTP Modal */}
+      {tempUser && (
+        <OTPModal
+          open={showOTP}
+          onClose={() => {
+            setShowOTP(false);
+            setTempUser(null);
+          }}
+          onVerify={handleOTPVerify}
+          phone={tempUser.phone}
+          purpose="register"
+        />
+      )}
     </div>
   );
 }
