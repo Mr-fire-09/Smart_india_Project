@@ -1,0 +1,86 @@
+{
+  "d8dfc500-7fc5-4848-a389-bc7fbea20bee": {
+    "username": "b",
+    "password": "$2b$10$mtXQr8c2xITShmvWfsp/ouPQ..yPPupEXxHNQqA63q.HGSaV0zYzS",
+    "role": "citizen",
+    "fullName": "Arpit Tripathi",
+    "email": "at0585969@gmail.com",
+    "phone": "9179200867",
+    "aadharNumber": "222222222222",
+    "department": null,
+    "createdAt": "2025-11-27T15:23:35.187Z",
+    "id": "d8dfc500-7fc5-4848-a389-bc7fbea20bee"
+  },
+  "41b24ca3-f900-4d9e-9519-90e1c86112d5": {
+    "username": "aa",
+    "password": "$2b$10$qW.pzXODEvNe47qnr57ilu.7tXsDlM9bwOPyCDS3h/Ucwptx5qEFm",
+    "role": "official",
+    "fullName": "Arpit Tripathi",
+    "email": "at0585969@outlook.com",
+    "phone": "9179200869",
+    "aadharNumber": "123456789127",
+    "department": "Aadhaar – Unique Identification Authority of India (UIDAI)",
+    "createdAt": "2025-11-27T15:25:13.858Z",
+    "id": "41b24ca3-f900-4d9e-9519-90e1c86112d5"
+  },
+  "38c03ffd-8be3-4912-b78f-5a5b2d10c390": {
+    "username": "tq",
+    "password": "$2b$10$0ly9/JPGmSZ6Eq3e.PnbpO2E5ALgOJmCzmrEKImNvgXF1eW7rpzM.",
+    "role": "citizen",
+    "fullName": "Arpit Tripathi",
+    "email": "arpitaacharya0908@gmail.com",
+    "phone": "76179200867",
+    "aadharNumber": "222222222224",
+    "department": null,
+    "createdAt": "2025-11-27T15:39:11.419Z",
+    "id": "38c03ffd-8be3-4912-b78f-5a5b2d10c390"
+  },
+  "03d9596f-5bee-4bfc-9a26-ed75f8434a05": {
+    "username": "aat",
+    "password": "$2b$10$5oNJBQM9FZ1aM5QaIQfFMeAWF4YUu6zSNKwdiydOZf2G6h4opFJFC",
+    "role": "official",
+    "fullName": "Arpit Tripathi",
+    "email": "at058599@outlook.com",
+    "phone": "09187200867",
+    "aadharNumber": "123456789123",
+    "department": "Aadhaar – Unique Identification Authority of India (UIDAI)",
+    "createdAt": "2025-11-27T15:41:26.097Z",
+    "id": "03d9596f-5bee-4bfc-9a26-ed75f8434a05"
+  },
+  "5db2f047-b07f-4cae-a9e6-39698ac9b5a5": {
+    "username": "aatt",
+    "password": "$2b$10$rolXBtmyPsxo/4Xv1L2G7ux.1.eMAXsLqYflf8a4Kdzfgo93CS152",
+    "role": "admin",
+    "fullName": "Arpit Tripathi",
+    "email": "arpitaachary0908@gmail.com",
+    "phone": "0917920867",
+    "aadharNumber": "567454444444",
+    "department": null,
+    "createdAt": "2025-11-28T05:09:28.670Z",
+    "id": "5db2f047-b07f-4cae-a9e6-39698ac9b5a5"
+  },
+  "ede06956-77f6-4614-9cab-95ba6ab706b5": {
+    "username": "ad",
+    "password": "$2b$10$.vky.CmJPq75p8tUwXRwfe.tCab78HqN4ywiDejF9HSJ800nlPqAu",
+    "role": "admin",
+    "fullName": "Arpit Tripathi",
+    "email": "at058969@outlook.com",
+    "phone": "1179200867",
+    "aadharNumber": "463453333333",
+    "department": null,
+    "createdAt": "2025-11-28T13:34:34.299Z",
+    "id": "ede06956-77f6-4614-9cab-95ba6ab706b5"
+  },
+  "a892c035-347c-405d-8aa2-7cb2bd967021": {
+    "username": "c2",
+    "password": "$2b$10$SWPL.iAh/7/y0o67rN7fwefAEmyprlg7ghS8Fdn8Zw8a5RZn5U3A2",
+    "role": "official",
+    "fullName": "c2",
+    "email": "at05869@outlook.com",
+    "phone": "0917920083",
+    "aadharNumber": "325433333333",
+    "department": "Aadhaar – Unique Identification Authority of India (UIDAI)",
+    "createdAt": "2025-11-28T13:42:41.881Z",
+    "id": "a892c035-347c-405d-8aa2-7cb2bd967021"
+  }
+}
