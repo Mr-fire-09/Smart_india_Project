@@ -28,11 +28,20 @@ declare module 'http' {
   }
 }
 app.use(express.json({
+  limit: 200 * 1024 * 1024, // 200MB in bytes
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }
 }));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: 200 * 1024 * 1024 }));
+
+// Special error handler for payload too large
+app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ message: "File too large. Please upload a smaller file." });
+  }
+  next(err);
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

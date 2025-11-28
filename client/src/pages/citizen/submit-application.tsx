@@ -22,7 +22,83 @@ export default function SubmitApplication() {
     applicationType: "",
     description: "",
     additionalInfo: "",
+    image: "",
   });
+
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Max dimensions
+          const maxWidth = 1920;
+          const maxHeight = 1920;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = (width * maxHeight) / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Compress to JPEG with 70% quality
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(compressedBase64);
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 50 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please upload an image smaller than 50MB",
+          variant: "destructive",
+        });
+        e.target.value = ""; // Clear the input
+        return;
+      }
+
+      try {
+        const compressedImage = await compressImage(file);
+        setFormData({ ...formData, image: compressedImage });
+        toast({
+          title: "Image uploaded",
+          description: "Image has been compressed and ready to submit",
+        });
+      } catch (error) {
+        toast({
+          title: "Upload failed",
+          description: "Failed to process image",
+          variant: "destructive",
+        });
+        e.target.value = "";
+      }
+    }
+  };
 
   const applicationTypes = [
     "Aadhaar – Unique Identification Authority of India (UIDAI)",
@@ -79,6 +155,7 @@ export default function SubmitApplication() {
         description: formData.description,
         citizenId: user!.id,
         data: JSON.stringify({ additionalInfo: formData.additionalInfo }),
+        image: formData.image || undefined,
       };
 
       await apiRequest("POST", "/api/applications", data);
@@ -188,6 +265,34 @@ export default function SubmitApplication() {
                     rows={4}
                     data-testid="textarea-additional"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="image">Upload Image (Optional)</Label>
+                  <Input
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="cursor-pointer"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Images will be compressed to max 1920x1920 pixels at 70% JPEG quality
+                  </p>
+                  {formData.image && (
+                    <div className="mt-2">
+                      <img src={formData.image} alt="Preview" className="max-h-48 rounded-md border" />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="mt-1 text-red-500 hover:text-red-700"
+                        onClick={() => setFormData({ ...formData, image: "" })}
+                      >
+                        Remove Image
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-muted p-4 rounded-md space-y-2">

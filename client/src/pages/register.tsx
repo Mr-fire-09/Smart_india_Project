@@ -73,11 +73,7 @@ export default function Register() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showOTP, setShowOTP] = useState(false);
-<<<<<<< HEAD
   const [tempUser, setTempUser] = useState<{ user: User; phone?: string; email?: string; otpMethod?: "phone" | "email" } | null>(null);
-=======
-  const [tempUser, setTempUser] = useState<{ user: User; recipient: string } | null>(null);
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [formData, setFormData] = useState({
@@ -89,10 +85,7 @@ export default function Register() {
     phone: "",
     aadharNumber: "",
     role: "citizen",
-<<<<<<< HEAD
     department: "",
-=======
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
   });
 
   // OTP removed: verification is not required for registration flow
@@ -113,7 +106,6 @@ export default function Register() {
 
     try {
       const { confirmPassword, ...registerData } = formData;
-<<<<<<< HEAD
 
       // Filter out empty optional fields to avoid sending empty strings
       const cleanedData = Object.fromEntries(
@@ -150,19 +142,6 @@ export default function Register() {
           title: "OTP Sent",
           description: `Check your ${response.otpMethod === 'email' ? 'email' : 'phone'} for the verification code`
         });
-=======
-      const response = await apiRequest<{ user: User; token?: string; recipient?: string; otp?: string }>(
-        "POST",
-        "/api/auth/register",
-        registerData
-      );
-
-      // If server returned a phone (two-step flow), show OTP modal
-      if (response.recipient) {
-        setTempUser({ user: response.user, recipient: response.recipient });
-        setShowOTP(true);
-        toast({ title: "OTP Sent", description: "Check your email or phone for the verification code" });
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
         return;
       }
 
@@ -203,14 +182,9 @@ export default function Register() {
 
   const handleOTPVerify = async (otp: string): Promise<boolean> => {
     try {
-<<<<<<< HEAD
       await apiRequest<{ message?: string }>("POST", "/api/auth/verify-otp", {
         phone: tempUser?.phone,
         email: tempUser?.email,
-=======
-      await apiRequest<{ message?: string }>("POST", "/api/otp/verify", {
-        recipient: tempUser?.recipient,
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
         otp,
         purpose: "register",
       });
@@ -230,11 +204,7 @@ export default function Register() {
 
       setShowOTP(false);
       setTempUser(null);
-<<<<<<< HEAD
       setFormData({ username: "", password: "", confirmPassword: "", fullName: "", email: "", phone: "", aadharNumber: "", role: "citizen", department: "" });
-=======
-      setFormData({ username: "", password: "", confirmPassword: "", fullName: "", email: "", phone: "", aadharNumber: "", role: "citizen" });
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
 
       const role = tokenResp.user?.role;
       if (role === "admin") {
@@ -332,40 +302,41 @@ export default function Register() {
                 />
               </div>
               <div className="space-y-2">
-<<<<<<< HEAD
-=======
-                <Label htmlFor="role" className="text-sm font-semibold">Register As</Label>
-                <select
-                  id="role"
-                  aria-label="Select registration role"
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  data-testid="select-role"
-                  className="w-full border-purple-200/30 bg-white/10 dark:bg-slate-900/30 focus:border-purple-500 focus:ring-purple-500/20 dark:border-purple-800/30 dark:focus:bg-slate-900/40 rounded-md p-2"
-                >
-                  <option value="citizen">Citizen</option>
-                  <option value="official">Official</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="aadharNumber" className="text-sm font-semibold">Aadhar Number</Label>
-                <Input
-                  id="aadharNumber"
-                  type="text"
-                  placeholder="Enter your 12-digit Aadhar number"
-                  value={formData.aadharNumber}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, "").slice(0, 12);
-                    setFormData({ ...formData, aadharNumber: value });
-                  }}
-                  maxLength={12}
-                  data-testid="input-aadhar"
-                  className="border-purple-200/30 bg-white/10 dark:bg-slate-900/30 focus:border-purple-500 focus:ring-purple-500/20 dark:border-purple-800/30 dark:focus:bg-slate-900/40 backdrop-blur-sm"
-                />
-              </div>
-              <div className="space-y-2">
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
+                {formData.role === "official" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="department" className="text-sm font-semibold">Department</Label>
+                    <select
+                      id="department"
+                      value={formData.department}
+                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                      className="w-full border-purple-200/30 bg-white/10 dark:bg-slate-900/30 focus:border-purple-500 focus:ring-purple-500/20 dark:border-purple-800/30 dark:focus:bg-slate-900/40 rounded-md p-2"
+                      required
+                    >
+                      <option value="">Select Department</option>
+                      {DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="aadharNumber" className="text-sm font-semibold">Aadhar Number</Label>
+                  <Input
+                    id="aadharNumber"
+                    type="text"
+                    placeholder="Enter your 12-digit Aadhar number"
+                    value={formData.aadharNumber}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "").slice(0, 12);
+                      setFormData({ ...formData, aadharNumber: value });
+                    }}
+                    maxLength={12}
+                    data-testid="input-aadhar"
+                    className="border-purple-200/30 bg-white/10 dark:bg-slate-900/30 focus:border-purple-500 focus:ring-purple-500/20 dark:border-purple-800/30 dark:focus:bg-slate-900/40 backdrop-blur-sm"
+                  />
+                </div>
                 <Label htmlFor="username" className="text-sm font-semibold">Username</Label>
                 <Input
                   id="username"
@@ -454,12 +425,8 @@ export default function Register() {
             setTempUser(null);
           }}
           onVerify={handleOTPVerify}
-<<<<<<< HEAD
           phone={tempUser.phone}
           email={tempUser.email}
-=======
-          recipient={tempUser.recipient}
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
           purpose="register"
         />
       )}

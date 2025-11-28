@@ -16,7 +16,30 @@ const transporter = nodemailer.createTransport(emailConfig);
 
 // Email templates
 const generateOTPEmailHTML = (otp: string, purpose: string) => {
-  const purposeText = purpose === 'login' ? 'Login' : purpose === 'register' ? 'Registration' : 'Password Reset';
+  let purposeText = 'Verification';
+  let purposeDescription = 'verification';
+
+  switch (purpose) {
+    case 'login':
+      purposeText = 'Login';
+      purposeDescription = 'login';
+      break;
+    case 'register':
+      purposeText = 'Registration';
+      purposeDescription = 'registration';
+      break;
+    case 'reset-password':
+      purposeText = 'Password Reset';
+      purposeDescription = 'password reset';
+      break;
+    case 'feedback':
+      purposeText = 'Rating Submission';
+      purposeDescription = 'submitting your rating and feedback';
+      break;
+    default:
+      purposeText = 'Verification';
+      purposeDescription = 'verification';
+  }
 
   return `
     <!DOCTYPE html>
@@ -41,7 +64,7 @@ const generateOTPEmailHTML = (otp: string, purpose: string) => {
         </div>
         <div class="content">
           <h2>Hello!</h2>
-          <p>You requested a one-time password for ${purposeText.toLowerCase()}. Use the code below to proceed:</p>
+          <p>You requested a one-time password for ${purposeDescription}. Use the code below to proceed:</p>
           
           <div class="otp-box">
             <div class="otp-code">${otp}</div>
@@ -69,21 +92,45 @@ const generateOTPEmailHTML = (otp: string, purpose: string) => {
  */
 export async function sendEmailOTP(email: string, otp: string, purpose: string): Promise<void> {
   try {
+    let subjectText = 'Verification Code';
+    switch (purpose) {
+      case 'login':
+        subjectText = 'Login Verification Code';
+        break;
+      case 'register':
+        subjectText = 'Registration Verification Code';
+        break;
+      case 'reset-password':
+        subjectText = 'Password Reset Code';
+        break;
+      case 'feedback':
+        subjectText = 'Rating Submission Verification Code';
+        break;
+    }
+
     const mailOptions = {
       from: `"Digital Governance" <${emailConfig.auth.user}>`,
       to: email,
-      subject: `Your OTP for ${purpose === 'login' ? 'Login' : purpose === 'register' ? 'Registration' : 'Password Reset'}`,
+      subject: subjectText,
       html: generateOTPEmailHTML(otp, purpose),
       text: `Your OTP is: ${otp}. Valid for 10 minutes. Do not share this code with anyone.`,
     };
 
+    console.log(`📧 Attempting to send OTP email for ${purpose} to: ${email}`);
     await transporter.sendMail(mailOptions);
-    console.log(`Email OTP sent successfully to ${email}`);
+    console.log(`✅ Email OTP sent successfully to ${email} for ${purpose}`);
   } catch (error: any) {
-    console.error('Failed to send email OTP:', error);
+    console.error('❌ Failed to send email OTP:', error);
+    console.error('Error details:', error.message);
     if (error.code === 'EAUTH') {
-      console.error('Email authentication failed. Please check your SMTP credentials in the .env file.');
-      console.error('Ensure you are using an App Password if using Gmail.');
+      console.error('🔐 Email authentication failed. Please check your SMTP credentials in the .env file.');
+      console.error('💡 Ensure you are using an App Password if using Gmail.');
+    } else if (error.code === 'ECONNECTION') {
+      console.error('🌐 Connection failed. Check your internet connection and SMTP settings.');
+    }
+    // In development, log the OTP to console as fallback
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`🔑 DEV MODE - OTP for ${email}: ${otp}`);
     }
     throw new Error('Failed to send email. Please try again.');
   }

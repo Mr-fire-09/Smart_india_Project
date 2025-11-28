@@ -13,15 +13,37 @@ export const users = pgTable("users", {
   phone: text("phone"),
   aadharNumber: text("aadhar_number"),
   department: text("department"),
+  rating: integer("rating").default(0),
+  assignedCount: integer("assigned_count").default(0),
+  solvedCount: integer("solved_count").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const departments = pgTable("departments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  image: text("image"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const warnings = pgTable("warnings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  officialId: varchar("official_id").notNull(),
+  message: text("message").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  read: boolean("read").default(false).notNull(),
 });
 
 export const applications = pgTable("applications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   trackingId: text("tracking_id").notNull().unique(),
   applicationType: text("application_type").notNull(),
+  department: text("department"),
   description: text("description").notNull(),
   status: text("status").notNull(),
+  priority: text("priority").default("Normal").notNull(), // High, Medium, Normal
+  remarks: text("remarks"), // Notes/comments on the application
   citizenId: varchar("citizen_id").notNull(),
   officialId: varchar("official_id"),
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
@@ -30,6 +52,9 @@ export const applications = pgTable("applications", {
   approvedAt: timestamp("approved_at"),
   autoApprovalDate: timestamp("auto_approval_date").notNull(),
   data: text("data").notNull(),
+  image: text("image"),
+  isSolved: boolean("is_solved").default(false),
+  escalationLevel: integer("escalation_level").default(0),
 });
 
 export const applicationHistory = pgTable("application_history", {
@@ -45,6 +70,7 @@ export const feedback = pgTable("feedback", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   applicationId: varchar("application_id").notNull().unique(),
   citizenId: varchar("citizen_id").notNull(),
+  officialId: varchar("official_id"), // Added to track which official is being rated
   rating: integer("rating").notNull(),
   comment: text("comment"),
   verified: boolean("verified").default(false).notNull(),
@@ -53,13 +79,8 @@ export const feedback = pgTable("feedback", {
 
 export const otpRecords = pgTable("otp_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-<<<<<<< HEAD
   phone: text("phone"),
   email: text("email"),
-=======
-  // recipient can be a phone number or an email address
-  recipient: text("recipient").notNull(),
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
   otp: text("otp").notNull(),
   purpose: text("purpose").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
@@ -89,6 +110,9 @@ export const notifications = pgTable("notifications", {
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
+  rating: true,
+  assignedCount: true,
+  solvedCount: true,
 });
 
 export const loginSchema = z.object({
@@ -109,6 +133,8 @@ export const insertApplicationSchema = createInsertSchema(applications).omit({
   approvedAt: true,
   autoApprovalDate: true,
   officialId: true,
+  isSolved: true,
+  escalationLevel: true,
 });
 
 export const updateApplicationStatusSchema = z.object({
@@ -123,27 +149,30 @@ export const insertFeedbackSchema = createInsertSchema(feedback).omit({
 });
 
 export const verifyOtpSchema = z.object({
-<<<<<<< HEAD
   phone: z.string().optional(),
   email: z.string().email().optional(),
-=======
-  recipient: z.string(),
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
   otp: z.string().length(6),
   purpose: z.string(),
 });
 
 export const generateOtpSchema = z.object({
-<<<<<<< HEAD
   phone: z.string().optional(),
   email: z.string().email().optional(),
-=======
-  recipient: z.string(),
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
   purpose: z.string(),
   // When true, attempt to deliver the OTP to the configured MAIN_OTP_TARGET instead
   // of (or in addition to) the user-provided phone.
   sendToMain: z.boolean().optional(),
+});
+
+export const insertDepartmentSchema = createInsertSchema(departments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWarningSchema = createInsertSchema(warnings).omit({
+  id: true,
+  sentAt: true,
+  read: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -165,3 +194,9 @@ export type GenerateOTP = z.infer<typeof generateOtpSchema>;
 
 export type BlockchainHash = typeof blockchainHashes.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+
+export type Department = typeof departments.$inferSelect;
+export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
+
+export type Warning = typeof warnings.$inferSelect;
+export type InsertWarning = z.infer<typeof insertWarningSchema>;

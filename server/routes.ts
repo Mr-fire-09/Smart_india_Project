@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { loginSchema, insertUserSchema, insertApplicationSchema, updateApplicationStatusSchema, insertFeedbackSchema, verifyOtpSchema, generateOtpSchema } from "@shared/schema";
+import { loginSchema, insertUserSchema, insertApplicationSchema, updateApplicationStatusSchema, insertFeedbackSchema, verifyOtpSchema, generateOtpSchema, insertDepartmentSchema, insertWarningSchema } from "@shared/schema";
 import type { User } from "@shared/schema";
 import { sendEmailOTP, verifyEmailConfig } from "./email-service";
 import { sendSMSOTP } from "./sms-service";
@@ -166,6 +166,72 @@ class AIMonitoringService {
 
 const aiService = new AIMonitoringService();
 
+async function autoAssignApplication(applicationId: string, departmentName: string, escalationLevel: number = 0) {
+  const officials = await storage.getAllOfficials();
+
+  // Filter by department
+  // Normalize department names (handle "Health – Ministry..." vs "Health")
+  const deptOfficials = officials.filter(u => {
+    if (!u.department) return false;
+    const uDept = u.department.split('–')[0].trim();
+    const appDept = departmentName.split('–')[0].trim();
+    return uDept === appDept;
+  });
+
+  if (deptOfficials.length === 0) return null;
+
+  // Determine rating range based on escalation level
+  let minRating = 0;
+  let maxRating = 5;
+
+  if (escalationLevel === 0) {
+    minRating = 0;
+    maxRating = 2.9; // 1-2 (allowing 0 for new officials)
+  } else if (escalationLevel === 1) {
+    minRating = 2.0; // Overlap slightly to ensure coverage
+    maxRating = 3.9; // 2-3
+  } else {
+    minRating = 3.0;
+    maxRating = 5.0; // 4-5
+  }
+
+  // Filter by rating
+  let eligibleOfficials = deptOfficials.filter(u => {
+    const rating = u.rating || 0;
+    return rating >= minRating && rating <= maxRating;
+  });
+
+  // If no officials in range, fallback to all department officials to ensure assignment
+  if (eligibleOfficials.length === 0) {
+    eligibleOfficials = deptOfficials;
+  }
+
+  // Sort by workload (assignedCount) ASC
+  eligibleOfficials.sort((a, b) => (a.assignedCount || 0) - (b.assignedCount || 0));
+
+  const bestOfficial = eligibleOfficials[0];
+
+  if (bestOfficial) {
+    // Assign
+    await storage.assignApplication(applicationId, bestOfficial.id);
+
+    // Update official stats
+    await storage.updateUserStats(
+      bestOfficial.id,
+      bestOfficial.rating || 0,
+      bestOfficial.solvedCount || 0,
+      (bestOfficial.assignedCount || 0) + 1
+    );
+
+    // Update escalation level on application
+    await storage.updateApplicationEscalation(applicationId, escalationLevel, bestOfficial.id);
+
+    return bestOfficial;
+  }
+
+  return null;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Verify email configuration on startup
   verifyEmailConfig().then((success) => {
@@ -222,7 +288,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { password, ...userWithoutPassword } = user;
 
-<<<<<<< HEAD
       // If email provided, use two-step verification: generate OTP and return email
       if (user.email) {
         const otp = generateOTP();
@@ -243,27 +308,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           otpMethod: "email",
           ...(isDev ? { otp } : {})
         });
-=======
-      // If phone provided, use two-step verification: generate OTP and return phone
-      // Client should complete OTP verification and then call /api/auth/token with purpose='register'
-
-      // If user has a phone or email, use that as the default recipient.
-      const defaultRecipient = (user.email || user.phone) as string;
-      if (defaultRecipient) {
+      } else if (user.phone) {
         const otp = generateOTP();
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-        await storage.createOTP(defaultRecipient, otp, "register", expiresAt);
+        await storage.createOTP(user.phone, "phone", otp, "register", expiresAt);
 
-        const routeToMain = process.env.OTP_ROUTE_TO_MAIN === "true";
-        const mainTarget = process.env.OTP_MAIN_TARGET;
-        const deliverTo = routeToMain && mainTarget ? mainTarget : defaultRecipient;
-        const deliveryMessage = `Your register OTP is ${otp}. It will expire in 10 minutes.`;
-          if (deliverTo) await sendSMS(deliverTo, deliveryMessage);
+        // Send OTP via SMS
+        try {
+          await sendSMSOTP(user.phone, otp, "register");
+        } catch (error) {
+          console.error("Failed to send SMS OTP:", error);
+        }
+        console.log(`Generated register OTP for phone ${user.phone}: ${otp}`);
 
-        console.log(`Generated register OTP for ${defaultRecipient}: ${otp} (delivered to ${deliverTo})`);
-
-        return res.json({ user: userWithoutPassword, recipient: defaultRecipient, ...(isDev ? { otp } : {}) });
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
+        return res.json({
+          user: userWithoutPassword,
+          phone: user.phone,
+          otpMethod: "phone",
+          ...(isDev ? { otp } : {})
+        });
       }
 
       // no phone or email -> issue token immediately
@@ -303,21 +366,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         // If no password provided, proceed with OTP-only login
 
-<<<<<<< HEAD
-=======
-      // If user has a phone number registered, use two-step (password + OTP) flow.
-      // Generate and store OTP for purpose 'login' and return the phone (no token).
-      // If no phone is available, fall back to issuing a token for backward compatibility.
-      const { password, ...userWithoutPassword } = user;
 
-      if (user.phone || user.email) {
-        const defaultRecipient = (user.email || user.phone) as string;
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
         const otp = generateOTP();
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
         await storage.createOTP(user.phone!, "phone", otp, "login", expiresAt);
 
-<<<<<<< HEAD
         // Send OTP via SMS
         try {
           await sendSMSOTP(user.phone!, otp, "login");
@@ -333,19 +386,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           otpMethod: "phone",
           ...(isDev ? { otp } : {})
         });
-=======
-        await storage.createOTP(defaultRecipient, otp, "login", expiresAt);
-        const routeToMain = process.env.OTP_ROUTE_TO_MAIN === "true";
-        const mainTarget = process.env.OTP_MAIN_TARGET;
-        const deliverTo = routeToMain && mainTarget ? mainTarget : defaultRecipient;
-        const deliveryMessage = `Your login OTP is ${otp}. It will expire in 10 minutes.`;
-          if (deliverTo) await sendSMS(deliverTo, deliveryMessage);
-        console.log(`Generated login OTP for ${defaultRecipient}: ${otp} (delivered to ${deliverTo})`);
-
-        // Return user (without password) and phone so client can show OTP modal
-        // In dev mode, include the OTP in the response to simplify local testing.
-        return res.json({ user: userWithoutPassword, recipient: defaultRecipient, ...(isDev ? { otp } : {}) });
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
       }
 
       // 2. Username/Email Login
@@ -410,6 +450,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...data,
         citizenId: req.user!.id,
       });
+
+      // Trigger Auto-Assignment
+      if (application.department) {
+        const assignedOfficial = await autoAssignApplication(application.id, application.department, 0);
+        if (assignedOfficial) {
+          console.log(`Auto-assigned application ${application.id} to ${assignedOfficial.username}`);
+        } else {
+          console.log(`Could not auto-assign application ${application.id} - no matching officials`);
+        }
+      }
+
       res.json(application);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -487,6 +538,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update application priority and remarks
+  app.patch("/api/applications/:id", authenticateToken, requireRole("official", "admin"), async (req: Request, res: Response) => {
+    try {
+      const { priority, remarks } = req.body;
+      const app = await storage.getApplication(req.params.id);
+
+      if (!app) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      // Update priority and remarks in storage
+      const updated = {
+        ...app,
+        priority: priority !== undefined ? priority : app.priority,
+        remarks: remarks !== undefined ? remarks : app.remarks,
+        lastUpdatedAt: new Date(),
+      };
+
+      // @ts-ignore - We're updating the application map directly
+      storage.applications.set(app.id, updated);
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   app.post("/api/applications/:id/assign", authenticateToken, requireRole("admin"), async (req: Request, res: Response) => {
     try {
       const { officialId } = req.body;
@@ -497,13 +575,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/applications/:id/accept", authenticateToken, requireRole("official", "admin"), async (req: Request, res: Response) => {
+    try {
+      const application = await storage.assignApplication(req.params.id, req.user!.id);
+
+      // Notify the citizen
+      const citizen = await storage.getUser(application.citizenId);
+      if (citizen) {
+        await storage.createNotification(
+          citizen.id,
+          "assignment",
+          "Application Assigned",
+          `Your application ${application.trackingId} has been assigned to an official and is now being processed.`,
+          application.id
+        );
+      }
+
+      res.json(application);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   app.post("/api/applications/:id/feedback", authenticateToken, async (req: Request, res: Response) => {
     try {
+      const application = await storage.getApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
       const data = insertFeedbackSchema.parse(req.body);
       const feedback = await storage.createFeedback({
         ...data,
         applicationId: req.params.id,
         citizenId: req.user!.id,
+        officialId: application.officialId, // Include the official who handled the application
       });
       res.json(feedback);
     } catch (error: any) {
@@ -511,32 +617,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/feedback - General feedback submission endpoint (backward compatibility)
+  app.post("/api/feedback", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const { applicationId, rating, comment } = req.body;
+
+      if (!applicationId) {
+        return res.status(400).json({ error: "Application ID is required" });
+      }
+
+      // Check if feedback already exists for this application
+      const existingFeedback = await storage.getFeedbackByApplicationId(applicationId);
+      if (existingFeedback) {
+        return res.status(400).json({
+          error: "You have already submitted feedback for this application. Ratings cannot be changed."
+        });
+      }
+
+      const application = await storage.getApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      // Ensure application belongs to the current user
+      if (application.citizenId !== req.user!.id) {
+        return res.status(403).json({ error: "You can only rate your own applications" });
+      }
+
+      const data = insertFeedbackSchema.parse({
+        applicationId,
+        citizenId: req.user!.id,
+        officialId: application.officialId,
+        rating,
+        comment,
+      });
+
+      const feedback = await storage.createFeedback(data);
+      res.json(feedback);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get feedback by Application ID
   app.get("/api/applications/:id/feedback", async (req: Request, res: Response) => {
     try {
-<<<<<<< HEAD
       const feedback = await storage.getFeedbackByApplicationId(req.params.id);
       res.json(feedback);
-=======
-      const data = generateOtpSchema.parse(req.body);
-      const otp = generateOTP();
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-      await storage.createOTP(data.recipient, otp, data.purpose, expiresAt);
-
-      const routeToMain = (data as any).sendToMain || process.env.OTP_ROUTE_TO_MAIN === "true";
-      const mainTarget = process.env.OTP_MAIN_TARGET;
-      const deliverTo = routeToMain && mainTarget ? mainTarget : data.recipient;
-      const deliveryMessage = `Your ${data.purpose} OTP is ${otp}. It will expire in 10 minutes.`;
-
-      // attempt to deliver SMS (Twilio or console fallback)
-        if (deliverTo) await sendSMS(deliverTo, deliveryMessage);
-
-      console.log(`Generated OTP for ${data.recipient}: ${otp} (delivered to ${deliverTo})`);
-
-      res.json({ message: "OTP sent successfully", otp });
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get blockchain hash for an application
+  app.get("/api/applications/:id/blockchain", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const hash = await storage.getBlockchainHash(req.params.id);
+      res.json(hash);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate OTP endpoint - creates and sends OTP
+  app.post("/api/otp/generate", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const data = generateOtpSchema.parse(req.body);
+      const otp = generateOTP();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+      if (data.email) {
+        await storage.createOTP(data.email, "email", otp, data.purpose, expiresAt);
+
+        try {
+          await sendEmailOTP(data.email, otp, data.purpose);
+          console.log(`Generated OTP for email ${data.email}: ${otp}`);
+        } catch (error) {
+          console.error("Failed to send email OTP:", error);
+        }
+
+        const isDev = (process.env.NODE_ENV || "development") !== "production";
+        return res.json({
+          message: "OTP sent to email",
+          ...(isDev ? { otp } : {})
+        });
+      } else if (data.phone) {
+        await storage.createOTP(data.phone, "phone", otp, data.purpose, expiresAt);
+
+        try {
+          await sendSMSOTP(data.phone, otp, data.purpose);
+          console.log(`Generated OTP for phone ${data.phone}: ${otp}`);
+        } catch (error) {
+          console.error("Failed to send SMS OTP:", error);
+        }
+
+        const isDev = (process.env.NODE_ENV || "development") !== "production";
+        return res.json({
+          message: "OTP sent to phone",
+          ...(isDev ? { otp } : {})
+        });
+      }
+
+      return res.status(400).json({ error: "Phone or email is required" });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   });
 
@@ -544,7 +728,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/verify-otp", async (req: Request, res: Response) => {
     try {
       const data = verifyOtpSchema.parse(req.body);
-<<<<<<< HEAD
       let identifier = "";
       let type: "phone" | "email" = "phone";
 
@@ -556,23 +739,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type = "email";
       } else {
         return res.status(400).json({ error: "Phone or email is required" });
-=======
-      // fetch the latest unverified OTP record for this phone/purpose
-      const record = await storage.getOTP(data.recipient, data.purpose);
-
-      console.log(`OTP verify attempt: recipient=${data.recipient} purpose=${data.purpose} provided=${data.otp}`);
-      if (record) console.log(`Found OTP record id=${record.id} otp=${record.otp} verified=${record.verified} expiresAt=${record.expiresAt.toISOString()}`);
-
-      if (!record) {
-        return res.status(400).json({ error: "Invalid or expired OTP" });
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
       }
 
-      const record = await storage.getLatestOTPRecord(identifier, type, data.purpose);
+      const record = await storage.getLatestOTPRecord(identifier, type, data.purpose || "login");
       if (!record) {
-        return res.status(400).json({ error: "No OTP record found" });
+        return res.status(400).json({ error: "No OTP found" });
       }
-
 
       if (record.expiresAt < new Date()) {
         return res.status(400).json({ error: "OTP expired" });
@@ -607,7 +779,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!user) return res.status(404).json({ error: "User not found" });
 
-<<<<<<< HEAD
       // Determine verification method based on what was passed or user data
       // If phone was passed, check phone OTP. If email/username passed, check email OTP (as per login flow).
       // However, for robustness, we should check what was actually verified.
@@ -630,20 +801,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // check latest record (may have been verified) for requested purpose
       const record = await storage.getLatestOTPRecord(identifier, type, purpose);
       if (!record || !record.verified) {
-=======
-      if (!user.phone && !user.email) return res.status(400).json({ error: "No phone or email registered for user" });
-
-      // check latest record (may have been verified) for requested purpose - look up by email then phone
-      const candidates: string[] = [];
-      if (user.email) candidates.push(user.email);
-      if (user.phone) candidates.push(user.phone);
-      let anyVerified = false;
-      for (const r of candidates) {
-        const rec = await storage.getLatestOTPRecord(r, purpose);
-        if (rec && rec.verified) { anyVerified = true; break; }
-      }
-      if (!anyVerified) {
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
         return res.status(401).json({ error: "OTP not verified" });
       }
 
@@ -721,10 +878,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // --- New Routes for Department & Official Management ---
+
+  // Get all departments
+  app.get("/api/departments", async (req: Request, res: Response) => {
+    try {
+      const departments = await storage.getAllDepartments();
+      res.json(departments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create department (Admin only - or for seeding)
+  app.post("/api/departments", authenticateToken, requireRole("admin"), async (req: Request, res: Response) => {
+    try {
+      const data = insertDepartmentSchema.parse(req.body);
+      const department = await storage.createDepartment(data);
+      res.json(department);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get officials by department
+  app.get("/api/departments/:id/officials", authenticateToken, requireRole("admin"), async (req: Request, res: Response) => {
+    try {
+      const department = await storage.getDepartment(req.params.id);
+      if (!department) return res.status(404).json({ error: "Department not found" });
+
+      const officials = await storage.getAllOfficials();
+      const deptOfficials = officials.filter(u => {
+        if (!u.department) return false;
+        // Simple string match for now, assuming names match
+        return u.department === department.name || u.department.startsWith(department.name);
+      });
+
+      res.json(deptOfficials);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Send warning to official
+  app.post("/api/warnings", authenticateToken, requireRole("admin"), async (req: Request, res: Response) => {
+    try {
+      const data = insertWarningSchema.parse(req.body);
+      const warning = await storage.createWarning(data);
+
+      // Also create a notification
+      await storage.createNotification(
+        data.officialId,
+        "warning",
+        "Performance Warning",
+        data.message
+      );
+
+      res.json(warning);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Citizen marks application as solved/unsolved
+  app.post("/api/applications/:id/solve", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const { isSolved, rating, comment } = req.body;
+      const app = await storage.getApplication(req.params.id);
+
+      if (!app) return res.status(404).json({ error: "Application not found" });
+      if (app.citizenId !== req.user!.id) return res.status(403).json({ error: "Unauthorized" });
+
+      if (isSolved) {
+        // Mark as solved
+        await storage.markApplicationSolved(app.id, true);
+
+        // Handle Rating
+        if (rating && app.officialId) {
+          // Check if already rated
+          const existingFeedback = await storage.getFeedbackByApplicationId(app.id);
+          if (!existingFeedback) {
+            await storage.createFeedback({
+              applicationId: app.id,
+              citizenId: req.user!.id,
+              officialId: app.officialId,
+              rating: rating,
+              comment: comment
+            });
+
+            // Update Official Rating
+            const official = await storage.getUser(app.officialId);
+            if (official) {
+              const allRatings = await storage.getOfficialRatings(official.id);
+              const totalRating = allRatings.reduce((sum, r) => sum + r.rating, 0);
+              const avgRating = totalRating / allRatings.length;
+
+              await storage.updateUserStats(
+                official.id,
+                avgRating,
+                (official.solvedCount || 0) + 1,
+                official.assignedCount || 0
+              );
+            }
+          }
+        }
+
+        res.json({ message: "Application marked as solved" });
+
+      } else {
+        // Not Solved -> Escalate
+        const currentLevel = app.escalationLevel || 0;
+        const nextLevel = currentLevel + 1;
+
+        if (app.department) {
+          const newOfficial = await autoAssignApplication(app.id, app.department, nextLevel);
+          if (newOfficial) {
+            res.json({ message: "Application escalated and reassigned", official: newOfficial.username });
+          } else {
+            res.json({ message: "Application escalated but no new official found. Pending assignment." });
+          }
+        } else {
+          res.status(400).json({ error: "Application has no department" });
+        }
+      }
+
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get user by ID (for displaying citizen information)
+  app.get("/api/users/:id", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      // Don't send password in response
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/users/officials", authenticateToken, requireRole("admin"), async (req: Request, res: Response) => {
     try {
       const officials = await storage.getAllOfficials();
       res.json(officials);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get official's rating stats
+  app.get("/api/officials/:id/rating", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const feedbacks = await storage.getOfficialRatings(req.params.id);
+
+      if (feedbacks.length === 0) {
+        return res.json({ averageRating: 0, totalRatings: 0 });
+      }
+
+      const totalRating = feedbacks.reduce((sum, f) => sum + f.rating, 0);
+      const averageRating = totalRating / feedbacks.length;
+
+      res.json({
+        averageRating: Number(averageRating.toFixed(1)),
+        totalRatings: feedbacks.length,
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

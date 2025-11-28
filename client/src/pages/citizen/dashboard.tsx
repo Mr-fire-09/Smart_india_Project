@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -17,12 +18,15 @@ export default function CitizenDashboard() {
 
   const { data: applications, isLoading: applicationsLoading } = useQuery<Application[]>({
     queryKey: ["/api/applications/my"],
+    refetchInterval: 5000,
   });
 
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     refetchInterval: 30000,
   });
+
+  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "approved" | "rejected">("all");
 
   const handleMarkAsRead = async (id: string) => {
     await apiRequest("POST", `/api/notifications/${id}/read`, {});
@@ -38,24 +42,33 @@ export default function CitizenDashboard() {
     setLocation(`/citizen/application/${id}`);
   };
 
-  const activeApplications = applications?.filter(app =>
-    ["Submitted", "Assigned", "In Progress"].includes(app.status)
-  ) || [];
+  // Debug logging
+  // console.log("Current filter:", filterStatus);
+  // console.log("Filtered apps count:", filteredApplications?.length);
 
-  const completedApplications = applications?.filter(app =>
-    ["Approved", "Rejected", "Auto-Approved"].includes(app.status)
-  ) || [];
+  // Filter applications based on selected status
+  const filteredApplications = (applications?.filter(app => {
+    if (filterStatus === "all") return true;
+    if (filterStatus === "pending") return ["Submitted", "Assigned", "In Progress"].includes(app.status);
+    if (filterStatus === "approved") return ["Approved", "Auto-Approved"].includes(app.status);
+    if (filterStatus === "rejected") return app.status === "Rejected";
+    return true;
+  }) || []).sort((a, b) => a.trackingId.localeCompare(b.trackingId));
 
   const stats = {
     total: applications?.length || 0,
-    pending: activeApplications.length,
-    approved: applications?.filter(app =>
-      ["Approved", "Auto-Approved"].includes(app.status)
-    ).length || 0,
-    rejected: applications?.filter(app =>
-      app.status === "Rejected"
-    ).length || 0
+    pending: applications?.filter(app => ["Submitted", "Assigned", "In Progress"].includes(app.status)).length || 0,
+    approved: applications?.filter(app => ["Approved", "Auto-Approved"].includes(app.status)).length || 0,
+    rejected: applications?.filter(app => app.status === "Rejected").length || 0
   };
+
+  // Scroll to applications list when filter changes
+  useEffect(() => {
+    const element = document.getElementById("applications-list");
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [filterStatus]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -91,7 +104,10 @@ export default function CitizenDashboard() {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:shadow-xl transition-shadow duration-300">
+          <Card
+            className={`border-0 shadow-lg cursor-pointer transition-all duration-300 hover:scale-105 ${filterStatus === 'all' ? 'ring-2 ring-blue-500 ring-offset-2' : ''} bg-gradient-to-br from-blue-500 to-blue-600 text-white`}
+            onClick={() => setFilterStatus("all")}
+          >
             <CardHeader className="pb-2">
               <CardDescription className="text-blue-100 text-xs font-medium">Total Applications</CardDescription>
               <CardTitle className="text-4xl font-bold">{stats.total}</CardTitle>
@@ -104,7 +120,10 @@ export default function CitizenDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-500 to-orange-600 text-white hover:shadow-xl transition-shadow duration-300">
+          <Card
+            className={`border-0 shadow-lg cursor-pointer transition-all duration-300 hover:scale-105 ${filterStatus === 'pending' ? 'ring-2 ring-orange-500 ring-offset-2' : ''} bg-gradient-to-br from-orange-500 to-orange-600 text-white`}
+            onClick={() => setFilterStatus("pending")}
+          >
             <CardHeader className="pb-2">
               <CardDescription className="text-orange-100 text-xs font-medium">Pending</CardDescription>
               <CardTitle className="text-4xl font-bold">{stats.pending}</CardTitle>
@@ -117,7 +136,10 @@ export default function CitizenDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-green-500 to-green-600 text-white hover:shadow-xl transition-shadow duration-300">
+          <Card
+            className={`border-0 shadow-lg cursor-pointer transition-all duration-300 hover:scale-105 ${filterStatus === 'approved' ? 'ring-2 ring-green-500 ring-offset-2' : ''} bg-gradient-to-br from-green-500 to-green-600 text-white`}
+            onClick={() => setFilterStatus("approved")}
+          >
             <CardHeader className="pb-2">
               <CardDescription className="text-green-100 text-xs font-medium">Approved</CardDescription>
               <CardTitle className="text-4xl font-bold">{stats.approved}</CardTitle>
@@ -130,7 +152,10 @@ export default function CitizenDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-red-500 to-red-600 text-white hover:shadow-xl transition-shadow duration-300">
+          <Card
+            className={`border-0 shadow-lg cursor-pointer transition-all duration-300 hover:scale-105 ${filterStatus === 'rejected' ? 'ring-2 ring-red-500 ring-offset-2' : ''} bg-gradient-to-br from-red-500 to-red-600 text-white`}
+            onClick={() => setFilterStatus("rejected")}
+          >
             <CardHeader className="pb-2">
               <CardDescription className="text-red-100 text-xs font-medium">Rejected</CardDescription>
               <CardTitle className="text-4xl font-bold">{stats.rejected}</CardTitle>
@@ -170,12 +195,49 @@ export default function CitizenDashboard() {
           </Card>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4" id="applications-list">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-950/50">
               <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
-            <h2 className="text-2xl font-bold font-heading text-gray-900 dark:text-gray-100">Active Applications</h2>
+            <h2 className="text-2xl font-bold font-heading text-gray-900 dark:text-gray-100">
+              Applications
+            </h2>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={filterStatus === "all" ? "default" : "outline"}
+              onClick={() => setFilterStatus("all")}
+              className="gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              All ({stats.total})
+            </Button>
+            <Button
+              variant={filterStatus === "pending" ? "default" : "outline"}
+              onClick={() => setFilterStatus("pending")}
+              className="gap-2"
+            >
+              <Clock className="h-4 w-4" />
+              Pending ({stats.pending})
+            </Button>
+            <Button
+              variant={filterStatus === "approved" ? "default" : "outline"}
+              onClick={() => setFilterStatus("approved")}
+              className="gap-2"
+            >
+              <CheckCircle className="h-4 w-4" />
+              Approved ({stats.approved})
+            </Button>
+            <Button
+              variant={filterStatus === "rejected" ? "default" : "outline"}
+              onClick={() => setFilterStatus("rejected")}
+              className="gap-2"
+            >
+              <XCircle className="h-4 w-4" />
+              Rejected ({stats.rejected})
+            </Button>
           </div>
 
           {applicationsLoading ? (
@@ -192,21 +254,23 @@ export default function CitizenDashboard() {
                 </Card>
               ))}
             </div>
-          ) : activeApplications.length === 0 ? (
+          ) : filteredApplications.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <FileText className="h-12 w-12 text-muted-foreground mb-4" />
                 <p className="text-muted-foreground text-center">
-                  No active applications. Submit your first application to get started.
+                  No applications found for this category.
                 </p>
-                <Button className="mt-4" onClick={() => setLocation("/citizen/submit")} data-testid="button-submit-first">
-                  Submit Application
-                </Button>
+                {filterStatus === 'all' && (
+                  <Button className="mt-4" onClick={() => setLocation("/citizen/submit")} data-testid="button-submit-first">
+                    Submit Application
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {activeApplications.map(app => (
+              {filteredApplications.map(app => (
                 <ApplicationCard
                   key={app.id}
                   application={app}
@@ -216,26 +280,6 @@ export default function CitizenDashboard() {
             </div>
           )}
         </div>
-
-        {completedApplications.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-950/50">
-                <FileText className="h-5 w-5 text-green-600 dark:text-green-400" />
-              </div>
-              <h2 className="text-2xl font-bold font-heading text-gray-900 dark:text-gray-100">Completed Applications</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {completedApplications.map(app => (
-                <ApplicationCard
-                  key={app.id}
-                  application={app}
-                  onViewDetails={() => handleViewDetails(app.id)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );

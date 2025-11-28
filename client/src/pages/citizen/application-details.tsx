@@ -3,26 +3,24 @@ import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, ArrowLeft, Clock, User, Calendar } from "lucide-react";
+import { Shield, ArrowLeft, Clock, User, Calendar, MessageSquare, ThumbsUp, ThumbsDown, Star } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusStepper } from "@/components/status-stepper";
 import { BlockchainHashDisplay } from "@/components/blockchain-hash";
 import { RatingComponent } from "@/components/rating-component";
-import { OTPModal } from "@/components/otp-modal";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Application, ApplicationHistory, BlockchainHash, Feedback } from "@shared/schema";
+import { useState } from "react";
 
 export default function ApplicationDetails() {
   const [, params] = useRoute("/citizen/application/:id");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [showOTPModal, setShowOTPModal] = useState(false);
-  const [pendingFeedback, setPendingFeedback] = useState<{ rating: number; comment: string } | null>(null);
+  const [isSolved, setIsSolved] = useState<boolean | null>(null);
 
   const applicationId = params?.id;
 
@@ -46,56 +44,49 @@ export default function ApplicationDetails() {
     enabled: !!applicationId && ["Approved", "Auto-Approved", "Rejected"].includes(application?.status || ""),
   });
 
-  const submitFeedbackMutation = useMutation({
-    mutationFn: async (data: { rating: number; comment: string }) => {
-      return await apiRequest("POST", "/api/feedback", {
-        applicationId,
-        citizenId: application?.citizenId,
-        rating: data.rating,
-        comment: data.comment,
-      });
+  // Fetch official information if application is assigned
+  const { data: official } = useQuery<{ id: string; fullName: string; department: string | null } | null>({
+    queryKey: ["/api/users", application?.officialId],
+    enabled: !!application?.officialId,
+  });
+
+  // Fetch official rating stats
+  const { data: officialRating } = useQuery<{ averageRating: number; totalRatings: number }>({
+    queryKey: ["/api/officials", application?.officialId, "rating"],
+    enabled: !!application?.officialId,
+  });
+
+  const solveMutation = useMutation({
+    mutationFn: async (data: { isSolved: boolean; rating?: number; comment?: string }) => {
+      return await apiRequest("POST", `/api/applications/${applicationId}/solve`, data);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/applications", applicationId] });
       queryClient.invalidateQueries({ queryKey: ["/api/applications", applicationId, "feedback"] });
-    },
-  });
-
-  const verifyOTPMutation = useMutation({
-    mutationFn: async (otp: string) => {
-<<<<<<< HEAD
-      return await apiRequest("POST", "/api/auth/verify-otp", {
-        phone: "temp-phone",
-=======
-      return await apiRequest("POST", "/api/otp/verify", {
-        recipient: user?.email || user?.phone,
->>>>>>> e521b45e5e9f988fe7945c688af4ed3bec9b205d
-        otp,
-        purpose: "feedback",
+      toast({
+        title: "Success",
+        description: data?.message || "Your feedback has been submitted successfully"
       });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to submit feedback. Please try again.",
+        variant: "destructive"
+      });
+    }
   });
 
-  const handleSubmitFeedback = (rating: number, comment: string) => {
-    setPendingFeedback({ rating, comment });
-    setShowOTPModal(true);
+  const handleSolveSelection = (solved: boolean) => {
+    setIsSolved(solved);
+    if (!solved) {
+      // Trigger escalation immediately
+      solveMutation.mutate({ isSolved: false });
+    }
   };
 
-  const handleVerifyOTP = async (otp: string): Promise<boolean> => {
-    try {
-      await verifyOTPMutation.mutateAsync(otp);
-
-      if (pendingFeedback) {
-        await submitFeedbackMutation.mutateAsync(pendingFeedback);
-        toast({
-          title: "Feedback Submitted!",
-          description: "Thank you for your feedback",
-        });
-        setPendingFeedback(null);
-      }
-      return true;
-    } catch (error) {
-      return false;
-    }
+  const handleRatingSubmit = (rating: number, comment: string) => {
+    solveMutation.mutate({ isSolved: true, rating, comment });
   };
 
   if (isLoading) {
@@ -133,6 +124,8 @@ export default function ApplicationDetails() {
     "Rejected": "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
     "Auto-Approved": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
   };
+
+  const showRating = ["Approved", "Auto-Approved"].includes(application.status) && !feedback && !application.isSolved;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -175,6 +168,23 @@ export default function ApplicationDetails() {
               <h3 className="font-medium text-sm text-muted-foreground mb-2">Description</h3>
               <p className="text-sm">{application.description}</p>
             </div>
+            {application.remarks && application.remarks.trim() && (
+              <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-start gap-2">
+                  <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <div>
+                    <h3 className="font-medium text-sm text-blue-900 dark:text-blue-300 mb-1">Internal Notes / Status Comments</h3>
+                    <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap">{application.remarks}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {application.image && (
+              <div>
+                <h3 className="font-medium text-sm text-muted-foreground mb-2">Uploaded Image</h3>
+                <img src={application.image} alt="Application Attachment" className="max-h-64 rounded-md border" />
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -200,63 +210,34 @@ export default function ApplicationDetails() {
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-heading">Application Progress</CardTitle>
-            <CardDescription>Track the status of your application</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <StatusStepper
-              currentStatus={application.status}
-              history={history.map(h => ({ ...h, updatedAt: new Date(h.updatedAt).toISOString() }))}
-            />
-          </CardContent>
-        </Card>
-
-        {blockchainHash && <BlockchainHashDisplay hash={blockchainHash} />}
-
-        {["Approved", "Auto-Approved", "Rejected"].includes(application.status) && !feedback && (
-          <RatingComponent
-            onSubmit={handleSubmitFeedback}
-            isSubmitting={submitFeedbackMutation.isPending}
-          />
-        )}
-
-        {feedback && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-heading">Your Feedback</CardTitle>
-              <CardDescription>Thank you for rating this service</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 mb-2">
-                {[1, 2, 3, 4, 5].map(star => (
-                  <span
-                    key={star}
-                    className={star <= feedback.rating ? "text-yellow-400" : "text-gray-300"}
-                  >
-                    ★
-                  </span>
-                ))}
-              </div>
-              {feedback.comment && (
-                <p className="text-sm text-muted-foreground">{feedback.comment}</p>
+            {/* Official Information */}
+            {official && (
+              <div className="pt-4 border-t">
+                <h3 className="font-medium text-sm text-muted-foreground mb-3">Assigned Official</h3>
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                    <div className="space-y-1 flex-1">
+                      <p className="font-semibold text-blue-900 dark:text-blue-300">{official.fullName}</p>
+                      {official.department && (
+                        <p className="text-sm text-blue-700 dark:text-blue-400">{official.department}</p>
+                      )}
+                      {officialRating && officialRating.totalRatings > 0 && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900/20 rounded-full">
+                            <Star className="h-4 w-4 text-yellow-600 dark:text-yellow-400 fill-yellow-600 dark:fill-yellow-400" />
+                            <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300">
+                              {officialRating.averageRating.toFixed(1)}
+                            </span>
+                            <span className="text-xs text-yellow-600 dark:text-yellow-400">/ 5.0</span>
+                          </div>
+                          isSubmitting={solveMutation.isPending}
+                />
+                          ) : (
+                          <div className="text-center p-4 bg-red-50 text-red-800 rounded-md">
+                            <p>We have noted that your issue is not resolved. The application has been escalated to a higher official.</p>
+                          </div>
               )}
-            </CardContent>
-          </Card>
-        )}
-      </main>
-
-        <OTPModal
-        open={showOTPModal}
-        onClose={() => setShowOTPModal(false)}
-        onVerify={handleVerifyOTP}
-          recipient={user?.email || user?.phone || ""}
-        purpose="feedback"
-      />
-    </div>
-  );
+                          );
 }

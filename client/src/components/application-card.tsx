@@ -1,16 +1,17 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Eye, User } from "lucide-react";
+import { Clock, Eye, User, MessageSquare, AlertTriangle, FileImage } from "lucide-react";
 import type { Application } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 
-interface ApplicationCardProps {
+export interface ApplicationCardProps {
   application: Application;
   onViewDetails: () => void;
   showActions?: boolean;
   onAccept?: () => void;
   onUpdate?: () => void;
+  className?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -22,23 +23,60 @@ const statusColors: Record<string, string> = {
   "Auto-Approved": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
 };
 
-export function ApplicationCard({ application, onViewDetails, showActions, onAccept, onUpdate }: ApplicationCardProps) {
+const priorityColors: Record<string, string> = {
+  "High": "bg-red-500 text-white border-red-600",
+  "Medium": "bg-orange-500 text-white border-orange-600",
+  "Normal": "bg-gray-400 text-white border-gray-500",
+};
+
+const borderColors: Record<string, string> = {
+  "Submitted": "border-l-blue-500",
+  "Assigned": "border-l-purple-500",
+  "In Progress": "border-l-yellow-500",
+  "Approved": "border-l-green-500",
+  "Rejected": "border-l-red-500",
+  "Auto-Approved": "border-l-emerald-500",
+};
+
+const cardBackgroundColors: Record<string, string> = {
+  "Submitted": "bg-gradient-to-br from-white to-blue-50/30 dark:from-slate-800 dark:to-blue-900/10",
+  "Assigned": "bg-gradient-to-br from-white to-purple-50/30 dark:from-slate-800 dark:to-purple-900/10",
+  "In Progress": "bg-gradient-to-br from-white to-yellow-50/30 dark:from-slate-800 dark:to-yellow-900/10",
+  "Approved": "bg-gradient-to-br from-white to-green-50/30 dark:from-slate-800 dark:to-green-900/10",
+  "Rejected": "bg-gradient-to-br from-white to-red-50/30 dark:from-slate-800 dark:to-red-900/10",
+  "Auto-Approved": "bg-gradient-to-br from-white to-emerald-50/30 dark:from-slate-800 dark:to-emerald-900/10",
+};
+
+export function ApplicationCard({ application, onViewDetails, showActions, onAccept, onUpdate, className }: ApplicationCardProps) {
+  const hasRemarks = application.remarks && application.remarks.trim().length > 0;
+  const hasImage = application.image && application.image.trim().length > 0;
+
   return (
     <Card
-      className="transition-all transform hover:-translate-y-1 hover:shadow-2xl shadow-lg rounded-lg overflow-hidden bg-white/80 dark:bg-slate-800/60"
+      className={`transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl shadow-md rounded-lg overflow-hidden border-l-4 ${borderColors[application.status] || "border-l-gray-500"} ${cardBackgroundColors[application.status] || "bg-white dark:bg-slate-800"} ${className || ""}`}
       data-testid={`card-application-${application.id}`}>
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2 bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-800/50 border-b border-gray-100 dark:border-gray-800/50">
         <div className="flex flex-col gap-1">
-          <code className="text-sm font-mono font-semibold text-foreground" data-testid={`text-tracking-${application.trackingId}`}>
-            {application.trackingId}
-          </code>
-          <p className="text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${statusColors[application.status].split(" ")[0].replace("bg-", "bg-")}`} />
+            <code className="text-sm font-mono font-semibold text-foreground" data-testid={`text-tracking-${application.trackingId}`}>
+              {application.trackingId}
+            </code>
+          </div>
+          <p className="text-xs text-muted-foreground font-medium">
             {application.applicationType}
           </p>
         </div>
-        <Badge className={statusColors[application.status]} data-testid={`badge-status-${application.status.toLowerCase().replace(/\s+/g, '-')}`}>
-          {application.status}
-        </Badge>
+        <div className="flex flex-wrap gap-1">
+          <Badge className={`${statusColors[application.status]} shadow-sm`} data-testid={`badge-status-${application.status.toLowerCase().replace(/\s+/g, '-')}`}>
+            {application.status}
+          </Badge>
+          {application.priority && application.priority !== "Normal" && (
+            <Badge className={`${priorityColors[application.priority]} shadow-sm`} variant="outline">
+              {application.priority}
+            </Badge>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-foreground line-clamp-2">
@@ -55,19 +93,31 @@ export function ApplicationCard({ application, onViewDetails, showActions, onAcc
               <span>Assigned</span>
             </div>
           )}
+          {hasRemarks && (
+            <div className="flex items-center gap-1 text-blue-600">
+              <MessageSquare className="h-3 w-3" />
+              <span>Has Notes</span>
+            </div>
+          )}
+          {hasImage && (
+            <div className="flex items-center gap-1">
+              <FileImage className="h-3 w-3" />
+              <span>Image</span>
+            </div>
+          )}
         </div>
       </CardContent>
       <CardFooter className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={onViewDetails} data-testid={`button-view-${application.id}`}>
           <Eye className="h-3 w-3" />
-          View Details
+          Check Status
         </Button>
         {showActions && onAccept && application.status === "Submitted" && (
           <Button size="sm" onClick={onAccept} data-testid={`button-accept-${application.id}`}>
             Accept
           </Button>
         )}
-        {showActions && onUpdate && application.status === "Assigned" && (
+        {showActions && onUpdate && application.status !== "Submitted" && (
           <Button size="sm" onClick={onUpdate} data-testid={`button-update-${application.id}`}>
             Update Status
           </Button>

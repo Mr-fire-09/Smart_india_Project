@@ -1,0 +1,32 @@
+{
+  "57def5b1-8537-4894-ac8d-a7404ffa785e": {
+    "applicationId": "9dc9bf6f-0986-48ba-9028-60821f0e4910",
+    "citizenId": "d8dfc500-7fc5-4848-a389-bc7fbea20bee",
+    "officialId": "03d9596f-5bee-4bfc-9a26-ed75f8434a05",
+    "rating": 5,
+    "comment": "",
+    "id": "57def5b1-8537-4894-ac8d-a7404ffa785e",
+    "verified": false,
+    "createdAt": "2025-11-28T02:08:11.380Z"
+  },
+  "890e4c58-c193-4be4-98c0-adc0fb083c4f": {
+    "applicationId": "32797854-391c-408b-94f8-9af4991f50fe",
+    "citizenId": "03d9596f-5bee-4bfc-9a26-ed75f8434a05",
+    "officialId": "03d9596f-5bee-4bfc-9a26-ed75f8434a05",
+    "rating": 1,
+    "comment": "jh",
+    "id": "890e4c58-c193-4be4-98c0-adc0fb083c4f",
+    "verified": false,
+    "createdAt": "2025-11-28T04:25:32.029Z"
+  },
+  "47043ce3-03e8-470e-876c-ce005d9f6d45": {
+    "applicationId": "343c891f-45a8-4227-91e3-4db1b1afdcf3",
+    "citizenId": "03d9596f-5bee-4bfc-9a26-ed75f8434a05",
+    "officialId": "03d9596f-5bee-4bfc-9a26-ed75f8434a05",
+    "rating": 3,
+    "comment": "d",
+    "id": "47043ce3-03e8-470e-876c-ce005d9f6d45",
+    "verified": false,
+    "createdAt": "2025-11-28T08:16:10.887Z"
+  }
+}
